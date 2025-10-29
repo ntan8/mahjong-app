@@ -1,0 +1,189 @@
+package com.mahjong.service;
+
+import com.mahjong.dao.GameDao;
+import com.mahjong.dto.GameStateResponse;
+import com.mahjong.model.Tile;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class GameService {
+
+    @Autowired
+    private GameDao gameDao;
+
+    /**
+     * Creates a new Mahjong game
+     * 
+     * @return the new game ID
+     */
+    public int createNewGame() {
+        // Initialize and setup new game
+        MahjongGame mahjongGame = new MahjongGame();
+        mahjongGame.initializeTiles();
+        mahjongGame.dealTiles();
+        System.out.println("Created a new Mahjong game.");
+
+        // Convert to response/state object
+        GameStateResponse gameState = convertToGameStateResponse(mahjongGame);
+        gameState.setCurrentPlayerTurn(1);
+        gameState.setWinnerId(-1);
+
+        // Save to database
+        int gameId = gameDao.createGame(gameState);
+
+        return gameId;
+    }
+
+    public GameStateResponse sortTiles(int gameId, int playerId) {
+        GameStateResponse gameState = gameDao.getGame(gameId);
+        MahjongGame mahjongGame = reconstructMahjongGame(gameState);
+
+        mahjongGame.setPlayerHand(playerId, mahjongGame.sortTiles(playerId));
+
+        // Convert back to response
+        GameStateResponse updatedState = convertToGameStateResponse(mahjongGame);
+
+        // Save updated state to database
+        gameDao.updateGame(gameId, updatedState);
+
+        return updatedState;
+    }
+
+    public GameStateResponse exchangeFlowers(int gameId, int playerId) {
+        GameStateResponse gameState = gameDao.getGame(gameId);
+        MahjongGame mahjongGame = reconstructMahjongGame(gameState);
+
+        if (playerId != -1) {
+            mahjongGame.exchangeTiles(playerId);
+            mahjongGame.setPlayerHand(playerId, mahjongGame.sortTiles(playerId));
+
+        } else {
+            mahjongGame.exchangeTiles(1);
+            mahjongGame.sortTiles(1);
+            mahjongGame.setPlayerHand(1, mahjongGame.sortTiles(1));
+
+            mahjongGame.exchangeTiles(2);
+            mahjongGame.sortTiles(2);
+            mahjongGame.setPlayerHand(2, mahjongGame.sortTiles(2));
+
+            mahjongGame.exchangeTiles(3);
+            mahjongGame.sortTiles(3);
+            mahjongGame.setPlayerHand(3, mahjongGame.sortTiles(3));
+
+            mahjongGame.exchangeTiles(4);
+            mahjongGame.sortTiles(4);
+            mahjongGame.setPlayerHand(4, mahjongGame.sortTiles(4));
+
+        }
+
+        mahjongGame.setPlayerHand(playerId, mahjongGame.sortTiles(playerId));
+
+        // Convert back to response
+        GameStateResponse updatedState = convertToGameStateResponse(mahjongGame);
+
+        // Save updated state to database
+        gameDao.updateGame(gameId, updatedState);
+
+        return updatedState;
+    }
+
+    /**
+     * Gets the current state of a game
+     * 
+     * @param gameId the game ID
+     * @return the current game state
+     */
+    public GameStateResponse getGameState(int gameId) {
+        GameStateResponse gameState = gameDao.getGame(gameId);
+
+        if (gameState == null) {
+            throw new RuntimeException("Game not found with ID: " + gameId);
+        }
+
+        return gameState;
+    }
+
+    /**
+     * Draws a tile for the current player
+     * 
+     * @param gameId the game ID
+     * @return updated game state
+     */
+    public GameStateResponse drawTile(int gameId) {
+        // Get current game state from database
+        GameStateResponse gameState = gameDao.getGame(gameId);
+
+        if (gameState == null) {
+            throw new RuntimeException("Game not found with ID: " + gameId);
+        }
+
+        // Reconstruct MahjongGame from state
+        MahjongGame mahjongGame = reconstructMahjongGame(gameState);
+
+        // Perform game logic
+        mahjongGame.drawTile(1);
+
+        // Convert back to response
+        GameStateResponse updatedState = convertToGameStateResponse(mahjongGame);
+
+        // Save updated state to database
+        gameDao.updateGame(gameId, updatedState);
+
+        return updatedState;
+    }
+
+    /**
+     * Reconstructs MahjongGame from GameStateResponse
+     * 
+     */
+    private MahjongGame reconstructMahjongGame(GameStateResponse state) {
+        MahjongGame game = new MahjongGame();
+
+        // Reconstruct the game from the saved state
+        game.setCurrentPlayerTurn(state.getCurrentPlayerTurn());
+        game.setWinnerId(state.getWinnerId());
+        game.setDiscardedTiles(state.getDiscardedTiles());
+        game.setTileStack(state.getTileStack());
+
+        // Set player hands
+        game.setPlayerHand(1, state.getCurrentPlayerHand());
+        List<List<Tile>> opponentHands = state.getOpponentHands();
+        for (int i = 0; i < opponentHands.size(); i++) {
+            game.setPlayerHand(i + 2, opponentHands.get(i));
+        }
+
+        // Set finished hands
+        game.setPlayerFinishedHand(1, state.getCurrentPlayerFinishedHand());
+
+        return game;
+    }
+
+    /**
+     * Converts MahjongGame object to GameStateResponse
+     */
+    private GameStateResponse convertToGameStateResponse(MahjongGame game) {
+        GameStateResponse response = new GameStateResponse();
+
+        response.setCurrentPlayerHand(game.getCurrentPlayerHand(1));
+
+        List<List<Tile>> opponentHands = new ArrayList<>();
+        opponentHands.add(game.getCurrentPlayerHand(2));
+        opponentHands.add(game.getCurrentPlayerHand(3));
+        opponentHands.add(game.getCurrentPlayerHand(4));
+        response.setOpponentHands(opponentHands);
+
+        response.setTileStack(game.getTileStack());
+        response.setDiscardedTiles(game.getDiscardedTiles());
+        response.setCurrentPlayerTurn(game.getCurrentPlayerTurn());
+        response.setYourTurn(game.isPlayerTurn(1));
+        response.setCurrentPlayerFinishedHand(game.getCurrentPlayerFinishedHand(1));
+        response.setWinnerId(game.getWinnerId());
+
+        return response;
+    }
+}

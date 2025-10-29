@@ -1,0 +1,471 @@
+package com.mahjong.service;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.mahjong.model.Tile;
+import com.mahjong.model.Player;
+import com.mahjong.util.TileType;
+
+public class MahjongGame {
+
+    private static final int NUM_OF_SET = 4; // Four sets of each tile
+    private List<Tile> tileStack = new ArrayList<>();
+    private List<Tile> discardPile = new ArrayList<>();
+    private Map<Integer, Player> playerMap = new HashMap<>();
+
+    private int numPlayers = 4;
+    private int currentPlayerTurn = 1;
+    private int winnerId = -1; // -1 means no winner yet
+
+    public int getCurrentPlayerTurn() {
+        return currentPlayerTurn;
+    }
+
+    public void setCurrentPlayerTurn(int currentPlayerTurn) {
+        this.currentPlayerTurn = currentPlayerTurn;
+    }
+
+    public int getWinnerId() {
+        return winnerId;
+    }
+
+    public void setWinnerId(int winnerId) {
+        this.winnerId = winnerId;
+    }
+
+    public boolean isPlayerTurn(int playerId) {
+        return currentPlayerTurn == playerId;
+    }
+
+    public void advanceToNextTurn() {
+        currentPlayerTurn = (currentPlayerTurn % numPlayers) + 1;
+        System.out.println("Advanced to player " + currentPlayerTurn + "'s turn");
+    }
+
+    public List<Tile> getDiscardedTiles() {
+        return discardPile;
+    }
+
+    public void setDiscardedTiles(List<Tile> discardedTiles) {
+        this.discardPile = discardedTiles;
+    }
+
+    public void setTileStack(List<Tile> tileStack) {
+        this.tileStack = tileStack;
+    }
+
+    public List<Tile> getTileStack() {
+        return tileStack;
+    }
+
+    public MahjongGame() {
+        // Initialize players
+        for (int i = 0; i < numPlayers; i++) {
+            int id = i + 1;
+            playerMap.put(id, new Player(id));
+        }
+    }
+
+    // Initialize tiles
+    public void initializeTiles() {
+        for (TileType type : TileType.values()) {
+            int maxNumber = type == TileType.FLOWERS ? 4 : 9; // Simplified flower count
+            for (int i = 1; i <= maxNumber; i++) {
+                for (int j = 0; j < NUM_OF_SET; j++) {
+                    boolean isFlower = (type == TileType.FLOWERS);
+                    tileStack.add(new Tile(type, i, isFlower));
+                }
+            }
+        }
+        // Shuffle tiles
+        Collections.shuffle(tileStack);
+    }
+
+    public void dealTiles() {
+        MahjongGame game = this;
+        // Deal 16 tiles to each player
+        for (int round = 0; round < 16; round++) {
+            for (Player player : playerMap.values()) {
+                // Draw from the top
+                Tile tile = tileStack.remove(0);
+                player.addTile(tile);
+            }
+        }
+
+        // Print players' hands
+        for (Player player : playerMap.values()) {
+            System.out.println(player + " hand: " + player.getHand());
+            System.out.println("Player has " + player.getHand().size() + " tiles.");
+        }
+
+        // Set the tile stack
+        System.out.println("Tiles remaining in stack: " + tileStack.size());
+        game.setTileStack(tileStack);
+    }
+
+    /**
+     * Deals the same predefined set of tiles to all 4 players for
+     * development/testing purposes.
+     * This ensures consistent game states for debugging and testing.
+     */
+    public void dealSameTilesToAllPlayers() {
+        // Clear all players' hands first
+        for (Player player : playerMap.values()) {
+            player.getHand().clear();
+        }
+
+        // Define a predefined set of 16 tiles for development
+        List<Tile> developmentHand = createDevelopmentHand();
+
+        // Deal the same tiles to each player
+        for (Player player : playerMap.values()) {
+            for (Tile tile : developmentHand) {
+                // Create a copy of the tile for each player
+                Tile tileCopy = new Tile(tile.getType(), tile.getNumber(), tile.isFlower());
+                player.addTile(tileCopy);
+            }
+        }
+
+        // Print players' hands
+        for (Player player : playerMap.values()) {
+            System.out.println(player + " hand: " + player.getHand());
+            System.out.println("Player has " + player.getHand().size() + " tiles.");
+        }
+    }
+
+    /**
+     * Creates a predefined hand for development purposes.
+     * This hand includes a mix of tiles that could potentially form winning
+     * combinations.
+     */
+    private List<Tile> createDevelopmentHand() {
+        List<Tile> hand = new ArrayList<>();
+
+        // Add some sequential tiles for potential chows
+        hand.add(new Tile(TileType.BALLS, 1, false));
+        hand.add(new Tile(TileType.BALLS, 2, false));
+        hand.add(new Tile(TileType.BALLS, 3, false));
+
+        hand.add(new Tile(TileType.CHARS, 4, false));
+        hand.add(new Tile(TileType.CHARS, 5, false));
+        hand.add(new Tile(TileType.CHARS, 6, false));
+
+        // Add some matching tiles for potential pongs
+        hand.add(new Tile(TileType.STICKS, 7, false));
+        hand.add(new Tile(TileType.STICKS, 7, false));
+        hand.add(new Tile(TileType.STICKS, 7, false));
+
+        hand.add(new Tile(TileType.BALLS, 9, false));
+        hand.add(new Tile(TileType.BALLS, 9, false));
+
+        // Add some random tiles
+        hand.add(new Tile(TileType.CHARS, 1, false));
+        hand.add(new Tile(TileType.CHARS, 8, false));
+        hand.add(new Tile(TileType.STICKS, 2, false));
+        hand.add(new Tile(TileType.STICKS, 5, false));
+
+        // Add a flower tile
+        hand.add(new Tile(TileType.FLOWERS, 1, true));
+
+        return hand;
+    }
+
+    public void setPlayerFinishedHand(int playerId, List<List<Tile>> finishedHand) {
+        Player player = playerMap.get(playerId);
+        if (player != null) {
+            player.setFinishedHand(finishedHand);
+        }
+    }
+
+    public void setPlayerHand(int playerId, List<Tile> hand) {
+        Player player = playerMap.get(playerId);
+        if (player != null) {
+            player.setHand(hand);
+        }
+    }
+
+    public List<Tile> getCurrentPlayerHand(int playerId) {
+        Player player = playerMap.get(playerId);
+        if (player != null) {
+            System.out.println("Current Player " + playerId + " hand: " + player.getHand());
+            return player.getHand();
+        }
+
+        return new ArrayList<>();
+    }
+
+    public List<List<Tile>> getCurrentPlayerFinishedHand(int playerId) {
+        Player player = playerMap.get(playerId);
+        if (player != null) {
+            System.out.println("Current Player " + playerId + " finished hand: " + player.getFinishedHand());
+            return player.getFinishedHand();
+        }
+        return new ArrayList<>();
+    }
+
+    public void exchangeSingleFlower(int playerId, Tile flowerTile) {
+        Player player = playerMap.get(playerId);
+        player.removeTile(flowerTile);
+        System.out.println("Exchanging " + flowerTile + " from " + playerId + " to " + player.getHand());
+    }
+
+    public List<Tile> exchangeTiles(int playerId) {
+        int flowerCount = 0;
+        Player player = playerMap.get(playerId);
+
+        if (player != null) {
+            List<Tile> hand = player.getHand();
+            List<Tile> flowersToRemove = new ArrayList<>();
+
+            // Count how many flowers in your hand
+            for (Tile tile : hand) {
+                if (tile.isFlower()) {
+                    flowersToRemove.add(tile);
+                }
+            }
+
+            for (Tile flower : flowersToRemove) {
+                player.removeTile(flower);
+                if (!tileStack.isEmpty()) {
+                    Tile newTile = tileStack.remove(0);
+                    player.addTile(newTile);
+                    System.out.println(
+                            "Player " + playerId + " exchanged flower tile " + flower + " for new tile "
+                                    + newTile);
+                } else {
+                    System.out.println("No more tiles in the stack to exchange.");
+                }
+            }
+            System.out.println("Player " + playerId + " has " + flowerCount + " flowers in hand.");
+            return hand;
+        }
+
+        return List.of();
+
+    }
+
+    public List<Tile> sortTiles(int playerId) {
+        Player player = playerMap.get(playerId);
+        if (player != null) {
+            List<Tile> hand = player.getHand();
+
+            List<Tile> sortedHand = new ArrayList<>(hand);
+            Collections.sort(sortedHand, Comparator.comparing(Tile::getType).thenComparingInt(Tile::getNumber));
+            System.out.println("Player " + playerId + " sorted hand: " + sortedHand);
+            player.setHand(sortedHand);
+            return sortedHand;
+        }
+        return new ArrayList<>(); // Empty list if player not found
+    }
+
+    public void drawTile(int playerId) {
+        Player player = playerMap.get(playerId);
+        if (player != null && !tileStack.isEmpty()) {
+            Tile drawnTile = tileStack.remove(0);
+            player.addTile(drawnTile);
+            System.out.println("Player " + playerId + " drew tile: " + drawnTile);
+        } else {
+            System.out.println("No tiles left to draw or player not found.");
+        }
+    }
+
+    public boolean checkChow(Tile selectedTile, List<Tile> chowTiles, int playerId) {
+        TileType type = selectedTile.getType();
+        int number = selectedTile.getNumber();
+        Player player = playerMap.get(playerId);
+        List<Tile> playerHand = player.getHand();
+
+        List<Tile> tilesToChow = new ArrayList<>(chowTiles);
+
+        // Check for Chow combinations
+        for (int i = 0; i < chowTiles.size(); i++) {
+            Tile tile1 = chowTiles.get(i);
+            int tile1Number = tile1.getNumber();
+            if (tile1.getType() == type && (Math.abs(tile1.getNumber() - number) == 1
+                    || Math.abs(tile1.getNumber() - number) == 2) && !tile1.equals(selectedTile)) {
+                for (int j = i + 1; j < chowTiles.size(); j++) {
+                    Tile tile2 = chowTiles.get(j);
+                    if (tile2.getType() == type && (Math.abs(tile2.getNumber() - number) == 1 ||
+                            Math.abs(tile2.getNumber() - tile1Number) == 1) && !tile2.equals(selectedTile)
+                            && !tile2.equals(tile1)) {
+                        System.out.println("Chow found with tiles: " + selectedTile + ", " + tile1 + ", " + tile2);
+
+                    } else {
+                        tilesToChow.remove(tile2);
+                    }
+                }
+            } else {
+                tilesToChow.remove(tile1);
+            }
+        }
+        if (tilesToChow.size() == 2) {
+            for (Tile t : tilesToChow) {
+                playerHand.remove(t);
+            }
+            tilesToChow.add(selectedTile);
+            // Add to finished hand
+            List<List<Tile>> finishedHand = player.getFinishedHand();
+            finishedHand.add(new ArrayList<>(tilesToChow));
+            player.setFinishedHand(finishedHand);
+
+            // Remove selectedTile from discard pile if present
+            discardPile.remove(selectedTile);
+
+            // return player.getFinishedHand();
+
+            return true;
+        }
+        System.out.println("No Chow found for tile: " + selectedTile);
+        return false; // Return empty list if no Chow found
+    }
+
+    public boolean checkMahjong(int playerId) {
+        // get the player's finished hand
+        Player player = playerMap.get(playerId);
+        List<List<Tile>> finishedHand = player.getFinishedHand();
+        // get the player's hand
+        List<Tile> hand = player.getHand();
+
+        int pairs = 0;
+        int triplets = 0;
+        int quads = 0;
+
+        for (int i = 0; i < hand.size(); i++) {
+            Tile currentTile = hand.get(i);
+            Tile nextTile = hand.get(i + 1);
+            if (currentTile == nextTile) {
+                pairs++;
+            } else if (currentTile.getType() == nextTile.getType()
+                    && currentTile.getNumber() + 1 == nextTile.getNumber()) {
+                // Check for triplet
+                if (i + 2 < hand.size() && hand.get(i + 2).getType() == currentTile.getType()
+                        && hand.get(i + 2).getNumber() - currentTile.getNumber() == 2) {
+                    triplets++;
+                    i += 2; // Skip the next two tiles as they are part of the triplet
+                }
+            }
+        }
+
+        // count each List<Tile> in finishedHand
+        // if the List<Tile> has 3 tiles, increment triplets
+        for (List<Tile> set : finishedHand) {
+            if (set.size() == 2) {
+                pairs++;
+            } else if (set.size() == 3) {
+                triplets++;
+            } else if (set.size() == 4) {
+                quads++;
+            }
+        }
+        if ((pairs * 2) + (triplets * 3) + (quads * 4) == 17) {
+            System.out.println("Player " + playerId + " has Mahjong!");
+            return true;
+        } else {
+            System.out.println("Player " + playerId + " does not have Mahjong.");
+            return false;
+        }
+    }
+
+    public boolean checkPong(Tile selectedTile, List<Tile> pongTiles, int playerId) {
+        TileType type = selectedTile.getType();
+        int number = selectedTile.getNumber();
+        Player player = playerMap.get(playerId);
+        List<Tile> playerHand = player.getHand();
+
+        List<Tile> tilesToPong = new ArrayList<>(pongTiles);
+
+        // If the tilesToPong are not in the player's hand, return false
+        for (Tile tile : tilesToPong) {
+            if (!playerHand.contains(tile)) {
+                System.out.println("Tile " + tile + " not found in player's hand.");
+                return false;
+            }
+        }
+
+        // If the tilesToPong are not equal to one another, return false
+        boolean tilesToPongAreTheSame = tilesToPong.getFirst().getType() == tilesToPong.getLast().getType()
+                && tilesToPong.getFirst().getNumber() == tilesToPong.getLast().getNumber();
+        if (!tilesToPongAreTheSame) {
+            System.out.println("Tiles to Pong are not the same: " + tilesToPong);
+            return false;
+        }
+
+        // if the selectedTile's type and number match tilesToPong, then return true
+        Tile tileToMatch = tilesToPong.getFirst();
+        if (tileToMatch.getType() == type && tileToMatch.getNumber() == number) {
+            System.out.println("Pong found with tiles: " + selectedTile + ", " + tileToMatch);
+
+            // Remove the pongTiles from player's hand
+            for (Tile t : tilesToPong) {
+                playerHand.remove(t);
+            }
+            tilesToPong.add(selectedTile);
+
+            // Add to finished hand
+            List<List<Tile>> finishedHand = player.getFinishedHand();
+            finishedHand.add(new ArrayList<>(tilesToPong));
+            player.setFinishedHand(finishedHand);
+
+            // Remove selectedTile from discard pile if present
+            discardPile.remove(selectedTile);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public void discardTile(int playerId, TileType type, int number) {
+        Player player = playerMap.get(playerId);
+        if (player != null) {
+            List<Tile> hand = player.getHand();
+            for (int i = 0; i < hand.size(); i++) {
+                Tile tile = hand.get(i);
+                if (tile.getType() == type && tile.getNumber() == number) {
+                    // Remove the tile from player's hand
+                    Tile discardedTile = hand.remove(i);
+                    System.out.println("Player " + playerId + " discarded: " + discardedTile);
+
+                    // Add the discarded tile to the discard pile
+                    discardPile.add(discardedTile);
+                    System.out.println("Discard pile now contains: " + discardPile.size() + " tiles");
+                    System.out.println("Discard pile: " + discardPile);
+                    return;
+                }
+            }
+            System.out.println("Tile not found in player's hand");
+        } else {
+            System.out.println("Player not found");
+        }
+    }
+
+    /**
+     * Initializes the game for development mode where all players get the same
+     * tiles.
+     * This method sets up the tile stack and deals identical hands to all players.
+     */
+    public void initializeGameForDevelopment() {
+        initializeTiles();
+        System.out.println("=== Development Mode: Dealing same tiles to all players ===");
+        dealSameTilesToAllPlayers();
+    }
+
+    public static void main(String[] args) {
+        MahjongGame game = new MahjongGame();
+
+        // Uncomment one of the following lines based on what you want to test:
+
+        // Regular game mode with random tile distribution
+        // game.initializeTiles();
+        // System.out.println("Total tiles: " + game.tileStack.size());
+        // game.dealTiles();
+
+        // Development mode with same tiles for all players
+        game.initializeGameForDevelopment();
+    }
+}

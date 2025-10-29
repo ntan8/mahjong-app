@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS games (
+    game_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_state TEXT NOT NULL,
+    current_player_turn INTEGER,
+    winner_id INTEGER DEFAULT -1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
