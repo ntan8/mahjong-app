@@ -78,6 +78,7 @@ const MahjongTable = () => {
 
     const [gameId, setGameId] = useState<number>(0);
     const [currentPlayerTurn, setCurrentPlayerTurn] = useState(1);
+    const [moves, setMoves] = useState<string[]>([]);
 
     // Refs for Three.js objects that persist across renders
     const sceneRef = useRef<THREE.Scene | null>(null);
@@ -596,7 +597,7 @@ const MahjongTable = () => {
         }
 
         try {
-            const response = await fetch('/api/game/discardTile', {
+            const response = await fetch(`/api/game/discardTile?gameId=${gameId}&playerId=1`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: selectedTile.type, number: selectedTile.number })
@@ -605,6 +606,7 @@ const MahjongTable = () => {
             setCurrentHand(result.data.currentPlayerHand);
             setSelectedTile(null);
             setCurrentPlayerTurn(result.data.currentPlayerTurn);
+            setMoves(result.data.moves);
         } catch (error) {
             console.error('Error discarding tile:', error);
         }
@@ -650,6 +652,16 @@ const MahjongTable = () => {
 
     const handleAdvanceToNextTurn = async () => {
         console.log('Advanced to next turn!')
+        try {
+            const response = await fetch(`api/game/computerTurn?gameId=${gameId}&playerId=${currentPlayerTurn}`)
+            const result = await response.json();
+            setCurrentHand(result.data.currentPlayerHand);
+            setCurrentPlayerTurn(result.data.currentPlayerTurn);
+            setMoves(result.data.moves);
+
+        } catch (error) {
+            console.error('Error advancing to next turn:', error);
+        }
     };
     return (
         <div className=" w-screen h-screen m-0 p-0 overflow-hidden bg-gray-900">
@@ -672,17 +684,10 @@ const MahjongTable = () => {
 
                 <section className="history__container"><h2>History</h2>
                     <ul className="max-h-30 overflow-y-auto">
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li>
-                        <li>A move happened</li></ul></section>
+                        {moves.map((move) => {
+                            return <li key={move} style={{ fontSize: '0.75rem', color: '#d1d5db' }}>{move}</li>
+                        })}
+                    </ul></section>
             </div>
 
             {/* Action buttons */}

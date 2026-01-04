@@ -19,6 +19,8 @@ public class GameStateResponse {
     private int winnerId;
     private int gameId;
     private List<String> moves;
+    private boolean canDraw;
+    private boolean canDiscard;
 
     public GameStateResponse() {
         this.currentPlayerHand = new ArrayList<>();
@@ -115,5 +117,21 @@ public class GameStateResponse {
 
     public void setTileStack(List<Tile> tileStack) {
         this.tileStack = tileStack;
+    }
+
+    public boolean isCanDraw() {
+        return canDraw;
+    }
+
+    public void setCanDraw(boolean canDraw) {
+        this.canDraw = canDraw;
+    }
+
+    public boolean isCanDiscard() {
+        return canDiscard;
+    }
+
+    public void setCanDiscard(boolean canDiscard) {
+        this.canDiscard = canDiscard;
     }
 }

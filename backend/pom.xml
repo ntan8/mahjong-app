@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>demo</artifactId>
+	<artifactId>mahjong</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>mahjong</name>
-	<description>My mahjong game</description>
+	<description>a Filipino mahjong game</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -79,6 +79,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			
 		</plugins>
 	</build>
 

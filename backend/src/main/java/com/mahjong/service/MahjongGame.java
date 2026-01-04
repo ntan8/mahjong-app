@@ -22,6 +22,11 @@ public class MahjongGame {
     private int currentPlayerTurn = 1;
     private int winnerId = -1; // -1 means no winner yet
 
+    private ArrayList<String> moves = new ArrayList<String>();
+
+    private boolean canDraw;
+    private boolean canDiscard;
+
     public int getCurrentPlayerTurn() {
         return currentPlayerTurn;
     }
@@ -61,6 +66,30 @@ public class MahjongGame {
 
     public List<Tile> getTileStack() {
         return tileStack;
+    }
+
+    public List<String> getMoves() {
+        return moves;
+    }
+
+    public void setMoves(ArrayList<String> moves) {
+        this.moves = moves;
+    }
+
+    public boolean canDraw() {
+        return canDraw;
+    }
+
+    public void setCanDraw(boolean canDraw) {
+        this.canDraw = canDraw;
+    }
+
+    public boolean canDiscard() {
+        return canDiscard;
+    }
+
+    public void setCanDiscard(boolean canDiscard) {
+        this.canDiscard = canDiscard;
     }
 
     public MahjongGame() {
@@ -269,6 +298,8 @@ public class MahjongGame {
             Tile drawnTile = tileStack.remove(0);
             player.addTile(drawnTile);
             System.out.println("Player " + playerId + " drew tile: " + drawnTile);
+            setCanDraw(false);
+            setCanDiscard(true);
         } else {
             System.out.println("No tiles left to draw or player not found.");
         }
@@ -421,27 +452,71 @@ public class MahjongGame {
     }
 
     public void discardTile(int playerId, TileType type, int number) {
-        Player player = playerMap.get(playerId);
-        if (player != null) {
-            List<Tile> hand = player.getHand();
-            for (int i = 0; i < hand.size(); i++) {
-                Tile tile = hand.get(i);
-                if (tile.getType() == type && tile.getNumber() == number) {
-                    // Remove the tile from player's hand
-                    Tile discardedTile = hand.remove(i);
-                    System.out.println("Player " + playerId + " discarded: " + discardedTile);
 
-                    // Add the discarded tile to the discard pile
-                    discardPile.add(discardedTile);
-                    System.out.println("Discard pile now contains: " + discardPile.size() + " tiles");
-                    System.out.println("Discard pile: " + discardPile);
-                    return;
-                }
-            }
-            System.out.println("Tile not found in player's hand");
-        } else {
-            System.out.println("Player not found");
+        if (!isPlayerTurn(playerId)) {
+            throw new IllegalStateException("Not player " + playerId + "'s turn");
         }
+
+        Player player = playerMap.get(playerId);
+        if (player == null) {
+            throw new IllegalArgumentException("Player not found: " + playerId);
+        }
+
+        List<Tile> hand = player.getHand();
+        for (int i = 0; i < hand.size(); i++) {
+            Tile tile = hand.get(i);
+            if (tile.getType() == type && tile.getNumber() == number) {
+                // Remove the tile from player's hand
+                Tile discardedTile = hand.remove(i);
+                System.out.println("Player " + playerId + " discarded: " + discardedTile);
+                moves.add("Player " + playerId + " discarded: " + discardedTile);
+
+                // Add the discarded tile to the discard pile
+                discardPile.add(discardedTile);
+                System.out.println("Discard pile now contains: " + discardPile.size() + " tiles");
+                System.out.println("Discard pile: " + discardPile);
+
+                setCanDiscard(false);
+                setCanDraw(true);
+
+                advanceToNextTurn();
+                return;
+            }
+        }
+        System.out.println("Tile not found in player's hand");
+
+    }
+
+    public void handleComputerTurn(int playerId) {
+        if (currentPlayerTurn != playerId) {
+            throw new IllegalArgumentException("It is " + currentPlayerTurn + "'s turn, not " + playerId);
+        }
+
+        if (currentPlayerTurn == 1) {
+            throw new IllegalArgumentException("It is Player 1 (main player)'s turn.");
+
+        }
+
+        System.out.println("Computer player " + playerId + " taking turn");
+
+        // 1. Draw a tile
+        drawTile(currentPlayerTurn);
+
+        List<Tile> currentPlayerHand = getCurrentPlayerHand(playerId);
+
+        // if the most recently drawn tile is a flower, discard it immediately
+        Tile lastTile = currentPlayerHand.getLast();
+        if (lastTile.isFlower()) {
+            exchangeSingleFlower(currentPlayerTurn, lastTile);
+        }
+
+        List<Tile> hand = getCurrentPlayerHand(currentPlayerTurn);
+
+        if (!hand.isEmpty()) {
+            Tile tileToDiscard = hand.get(hand.size() - 1);
+            discardTile(currentPlayerTurn, tileToDiscard.getType(), tileToDiscard.getNumber());
+        }
+
     }
 
     /**
@@ -457,8 +532,6 @@ public class MahjongGame {
 
     public static void main(String[] args) {
         MahjongGame game = new MahjongGame();
-
-        // Uncomment one of the following lines based on what you want to test:
 
         // Regular game mode with random tile distribution
         // game.initializeTiles();

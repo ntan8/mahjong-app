@@ -72,7 +72,7 @@ public class GameController {
     }
 
     @GetMapping("/api/game/getGameState")
-    public Response<GameStateResponse> getGameState(@RequestParam("id") int gameId) {
+    public Response<GameStateResponse> getGameState(@RequestParam("gameId") int gameId) {
         GameStateResponse gameState = gameService.getGameState(gameId);
         return Response.success(gameState);
     }
@@ -99,9 +99,9 @@ public class GameController {
 
     @GetMapping("/api/game/sortTiles")
     public Response<GameStateResponse> sortTiles(@RequestParam("gameId") int gameId, Integer playerId) {
-        MahjongGame game = getGame();
-        game.sortTiles(playerId);
-        return Response.success(getCurrentGameState());
+        GameStateResponse gameState = gameService.sortTiles(gameId, playerId);
+        gameState.setGameId(gameId);
+        return Response.success(gameState);
     }
 
     @GetMapping("/api/game/drawTile")
@@ -118,39 +118,9 @@ public class GameController {
             @RequestParam("playerId") int playerId, @RequestBody DiscardTileRequest request) {
         System.out.println(request);
 
-        GameStateResponse gameStateResponse = gameService.getGameState(gameId);
-        if (gameStateResponse == null) {
-            return Response.error("Game not found with ID: " + gameId);
-        }
-        MahjongGame game = getGame();
-
-        // Check if game exists
-        if (game == null) {
-            return Response.error("Game not found with ID: " + gameId);
-        }
-
-        // Check if it's player 1's turn
-        if (!game.isPlayerTurn(playerId)) {
-            // Return current state without discarding
-            return Response.success(getCurrentGameState());
-        }
-
-        if (!game.getCurrentPlayerHand(playerId).contains(new Tile(request.getType(), request.getNumber(), false))) {
-            // Return current state without discarding
-            Response<GameStateResponse> response = new Response<>();
-            gameStateResponse.setValidMove(false);
-
-            response.setData(gameStateResponse);
-            response.addError("Invalid move: tile not in hand");
-            return response;
-        }
-
-        // Human player discards a tile
-        game.discardTile(playerId, request.getType(), request.getNumber());
-        game.advanceToNextTurn();
-
-        return Response.success(getCurrentGameState());
-
+        GameStateResponse gameState = gameService.discardTile(gameId, playerId, request);
+        gameState.setGameId(gameId);
+        return Response.success(gameState);
     }
 
     @PostMapping("/api/game/chow")
@@ -238,20 +208,11 @@ public class GameController {
     }
 
     @GetMapping("/api/game/computerTurn")
-    public Response<GameStateResponse> computerTurn() {
-        MahjongGame game = getGame();
-        int playerId = game.getCurrentPlayerTurn();
+    public Response<GameStateResponse> computerTurn(@RequestParam("gameId") int gameId,
+            @RequestParam("playerId") int playerId) {
+        GameStateResponse gameState = gameService.handleComputerTurn(gameId, playerId);
+        return Response.success(gameState);
 
-        // If it's already player 1's turn, just return the state
-        if (game.isPlayerTurn(1)) {
-            return Response.success(getCurrentGameState());
-        }
-
-        // Handle a single computer player's turn
-        ComputerPlayerHandler computerHandler = new ComputerPlayerHandler(game);
-        computerHandler.handleSingleComputerTurn(playerId);
-
-        return Response.success(getCurrentGameState());
     }
 
     private boolean requestTilesExistInPlayerHand(MahjongGame game, int playerId, List<Tile> requestTiles) {
